@@ -1,4 +1,4 @@
-import { Platform, type TextStyle } from 'react-native';
+import type { TextStyle } from 'react-native';
 
 /**
  * Poppins faces for the Self Kiosk UI.
@@ -14,8 +14,6 @@ export const fonts = {
   bold: 'Poppins-Bold',
   extraBold: 'Poppins-ExtraBold',
 } as const;
-
-export type FontWeightKey = keyof typeof fonts;
 
 export function fontForWeight(
   weight?: TextStyle['fontWeight'],
@@ -41,9 +39,3 @@ export function fontForWeight(
       return fonts.regular;
   }
 }
-
-/** Default Text / TextInput style so the whole app inherits Poppins. */
-export const defaultTextStyle: TextStyle = {
-  fontFamily: fonts.regular,
-  ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
-};

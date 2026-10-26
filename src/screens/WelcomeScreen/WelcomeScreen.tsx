@@ -2,7 +2,6 @@ import { Image, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/atoms/AppText';
 import { PrimaryButton } from '../../components/atoms/PrimaryButton';
-import { LogoutButton } from '../../components/molecules/LogoutButton';
 import { KIOSK_TITLE } from '../../config/kiosk';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { colors } from '../../theme/colors';
@@ -11,10 +10,9 @@ import Images from '../../theme/Images';
 
 type Props = {
   onStart: () => void;
-  onLogout: () => void;
 };
 
-export function WelcomeScreen({ onStart, onLogout }: Props) {
+export function WelcomeScreen({ onStart }: Props) {
   const insets = useSafeAreaInsets();
   const layout = useResponsiveLayout();
   const hero = layout.mode === 'compact' ? 42 : 64;
@@ -29,16 +27,6 @@ export function WelcomeScreen({ onStart, onLogout }: Props) {
           paddingHorizontal: layout.contentPadding,
         },
       ]}>
-      {/* <LogoutButton
-        onLogout={onLogout}
-        style={[
-          styles.logout,
-          {
-            top: insets.top + 14,
-            right: layout.contentPadding,
-          },
-        ]}
-      /> */}
       <View style={styles.copy}>
         <Image source={Images.appLogo} style={styles.mark} />
         <AppText style={[styles.title, { fontSize: hero, lineHeight: hero + 8 }]}>
@@ -70,10 +58,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logout: {
-    position: 'absolute',
-    zIndex: 2,
   },
   copy: {
     width: '100%',

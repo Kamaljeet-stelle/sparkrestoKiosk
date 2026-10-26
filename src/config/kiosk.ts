@@ -17,10 +17,6 @@ export const KIOSK_DOMAIN_ID = '803';
 
 export const KIOSK_TITLE = 'Self Kiosk';
 
-export const STORE_NAME = 'NT Soaki Confectionery';
-
-export const STORE_MARK_URL = `${KIOSK_ORIGIN}/img/favicon.png`;
-
 export const EMPTY_CART_URL = `${KIOSK_ORIGIN}/images/cart-empty.png`;
 
 /** Return to the welcome screen after this much inactivity on the menu or confirmation. */

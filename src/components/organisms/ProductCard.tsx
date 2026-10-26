@@ -142,7 +142,6 @@ const styles = StyleSheet.create({
   price: {
     flex: 1,
     fontSize: 17,
-    // lineHeight: 22,
     fontFamily: fonts.semiBold,
     color: colors.orange,
   },

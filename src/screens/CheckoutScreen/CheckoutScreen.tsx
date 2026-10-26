@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +30,6 @@ const width = Dimensions.get('window').width;
 
 export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
   const insets = useSafeAreaInsets();
-  // const { width } = useWindowDimensions();
   const layout = useResponsiveLayout();
   const {
     lines,
@@ -41,7 +39,6 @@ export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
     updateCustomer,
     customerErrors,
     suggestions,
-    lookupContact,
     selectMember,
     submitting,
     orderError,
@@ -84,7 +81,6 @@ export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
 
   const form = (
     <View style={styles.form}>
-      {/* <AppText style={styles.formTitle}>Personal Details</AppText> */}
       <TextField
         label="Contact"
         required
@@ -96,7 +92,6 @@ export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
         onChangeText={value => {
           const contact = digitsOnly(value);
           updateCustomer({ contact });
-          // lookupContact(contact);
         }}
       />
       {suggestions.length > 0 ? (
@@ -231,13 +226,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     marginBottom: 16,
-
-  },
-  formTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.navy,
-    marginBottom: 14,
   },
   suggestions: {
     marginTop: -8,

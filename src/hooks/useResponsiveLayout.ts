@@ -26,8 +26,6 @@ export function useResponsiveLayout() {
     mode === 'desktop' ? 156 : mode === 'tablet' ? 124 : Math.max(72, Math.round(width * 0.2));
 
   const contentPadding = mode === 'compact' ? 16 : mode === 'tablet' ? 20 : 24;
-  const contentMaxWidth =
-    mode === 'desktop' ? 1120 : mode === 'tablet' ? 920 : undefined;
   const isWide = mode !== 'compact';
 
   return {
@@ -41,7 +39,5 @@ export function useResponsiveLayout() {
     category,
     productImageHeight,
     contentPadding,
-    contentMaxWidth,
-    isLandscape: width > height,
   };
 }

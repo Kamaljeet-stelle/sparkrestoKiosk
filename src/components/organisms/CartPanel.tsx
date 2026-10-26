@@ -1,10 +1,14 @@
+import { useEffect, useRef, useState } from 'react';
 import {
-  FlatList,
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  type ScrollViewInstance,
+  type ViewInstance,
 } from 'react-native';
 import { PrimaryButton } from '../atoms/PrimaryButton';
 import { QuantityStepper } from '../molecules/QuantityStepper';
@@ -36,6 +40,75 @@ export function CartPanel({ onContinue, framed = true }: Props) {
     applyCoupon,
     clearCoupon,
   } = useKiosk();
+  const panelRef = useRef<ViewInstance>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const couponRef = useRef<ViewInstance>(null);
+  const couponFocusedRef = useRef(false);
+  const keyboardTopRef = useRef<number | null>(null);
+  const scrollOffsetRef = useRef(0);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const couponApplied = couponStatus === 'applied';
+  const couponBusy = couponStatus === 'applying';
+
+  const syncInsetRef = useRef<(keyboardTop: number | null) => void>(() => undefined);
+  syncInsetRef.current = keyboardTop => {
+    keyboardTopRef.current = keyboardTop;
+    if (!couponFocusedRef.current || keyboardTop == null) {
+      setKeyboardInset(0);
+      return;
+    }
+
+    panelRef.current?.measureInWindow((_x, y, _width, height) => {
+      if (!couponFocusedRef.current || keyboardTopRef.current == null) {
+        return;
+      }
+      const covered = y + height - keyboardTopRef.current;
+      setKeyboardInset(Math.max(0, Math.round(covered)));
+      requestAnimationFrame(revealCoupon);
+    });
+  };
+
+  const revealCoupon = () => {
+    const field = couponRef.current;
+    const scroll = scrollRef.current;
+    if (!field || !scroll) {
+      return;
+    }
+
+    field.measureInWindow((_x, fieldY, _width, fieldHeight) => {
+      scroll.measureInWindow((_sx, scrollY, _sw, scrollHeight) => {
+        const keyboardTop = keyboardTopRef.current ?? scrollY + scrollHeight;
+        const visibleBottom = Math.min(scrollY + scrollHeight, keyboardTop);
+        const overlap = fieldY + fieldHeight - (visibleBottom - 12);
+        const above = fieldY - (scrollY + 12);
+        const delta = overlap > 0 ? overlap : above < 0 ? above : 0;
+        if (delta === 0) {
+          return;
+        }
+        scroll.scrollTo({
+          y: Math.max(0, scrollOffsetRef.current + delta),
+          animated: true,
+        });
+      });
+    });
+  };
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, event => {
+      syncInsetRef.current(event.endCoordinates.screenY);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      syncInsetRef.current(null);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const discountLabel =
     coupon?.offerType === 'Percentage'
@@ -44,8 +117,8 @@ export function CartPanel({ onContinue, framed = true }: Props) {
         ? formatRand(coupon.offer)
         : '';
 
-  const renderLine = ({ item }: { item: CartLine }) => (
-    <View style={styles.line}>
+  const renderLine = (item: CartLine) => (
+    <View key={item.productId} style={styles.line}>
       <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
       <View style={styles.lineBody}>
         <AppText style={styles.lineName} numberOfLines={2}>
@@ -72,12 +145,29 @@ export function CartPanel({ onContinue, framed = true }: Props) {
   );
 
   return (
-    <View style={[styles.panel, framed && styles.framed]}>
+    <View
+      ref={panelRef}
+      collapsable={false}
+      style={[styles.panel, framed && styles.framed]}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroller}
-        contentContainerStyle={styles.scrollerContent}
+        contentContainerStyle={[
+          styles.scrollerContent,
+          { paddingBottom: 12 + keyboardInset },
+        ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={event => {
+          scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+        }}
+        onContentSizeChange={() => {
+          if (couponFocusedRef.current) {
+            revealCoupon();
+          }
+        }}>
         <AppText style={styles.title}>Your Order</AppText>
         {lines.length === 0 ? (
           <View style={styles.empty}>
@@ -89,54 +179,49 @@ export function CartPanel({ onContinue, framed = true }: Props) {
             <AppText style={styles.emptyTitle}>Your cart is empty.</AppText>
           </View>
         ) : (
-          <FlatList
-            data={lines}
-            keyExtractor={item => item.productId}
-            renderItem={renderLine}
-            scrollEnabled={false}
-            contentContainerStyle={styles.listContent}
-          />
+          <View style={styles.listContent}>
+            {lines.map(renderLine)}
+          </View>
         )}
 
         <View style={styles.footer}>
-          <View style={styles.couponRow}>
+          <View ref={couponRef} collapsable={false} style={styles.couponRow}>
             <AppTextInput
               value={couponCode}
               onChangeText={setCouponCode}
-              editable={
-                couponStatus !== 'applied' && couponStatus !== 'applying'
-              }
+              editable={!couponApplied && !couponBusy}
               placeholder="Enter Coupon Code"
               placeholderTextColor={colors.placeholder}
               autoCapitalize="characters"
+              onFocus={() => {
+                couponFocusedRef.current = true;
+                syncInsetRef.current(keyboardTopRef.current);
+                revealCoupon();
+              }}
+              onBlur={() => {
+                couponFocusedRef.current = false;
+                setKeyboardInset(0);
+              }}
               style={[styles.couponInput, !!couponError && styles.couponError]}
             />
-            {couponStatus === 'applied' ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={clearCoupon}
-                style={styles.apply}>
-                <AppText style={styles.applyText}>Change</AppText>
-              </Pressable>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                disabled={couponStatus === 'applying'}
-                onPress={() => {
-                  applyCoupon().catch(() => undefined);
-                }}
-                style={[
-                  styles.apply,
-                  couponStatus === 'applying' && styles.applyBusy,
-                ]}>
-                <AppText style={styles.applyText}>
-                  {couponStatus === 'applying' ? '…' : 'Apply'}
-                </AppText>
-              </Pressable>
-            )}
+            <Pressable
+              accessibilityRole="button"
+              disabled={couponBusy}
+              onPress={() => {
+                if (couponApplied) {
+                  clearCoupon();
+                  return;
+                }
+                applyCoupon().catch(() => undefined);
+              }}
+              style={[styles.apply, couponBusy && styles.applyBusy]}>
+              <AppText style={styles.applyText}>
+                {couponApplied ? 'Change' : couponBusy ? '…' : 'Apply'}
+              </AppText>
+            </Pressable>
           </View>
           {couponError ? <AppText style={styles.error}>{couponError}</AppText> : null}
-          {couponStatus === 'applied' ? (
+          {couponApplied ? (
             <AppText style={styles.applied}>Coupon applied successfully.</AppText>
           ) : null}
 
@@ -175,10 +260,11 @@ function TotalRow({
 }) {
   return (
     <View style={styles.totalRow}>
-      <AppText style={[styles.totalLabel, strong && styles.totalStrong]}>
+      <AppText
+        style={[styles.totalText, styles.totalLabel, strong && styles.totalStrong]}>
         {label}
       </AppText>
-      <AppText style={[styles.totalValue, strong && styles.totalStrong]}>
+      <AppText style={[styles.totalText, strong && styles.totalStrong]}>
         {value}
       </AppText>
     </View>
@@ -201,7 +287,6 @@ const styles = StyleSheet.create({
   },
   scrollerContent: {
     flexGrow: 1,
-    paddingBottom: 12,
   },
   title: {
     fontSize: 22,
@@ -322,16 +407,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  totalLabel: {
-    flex: 1,
+  totalText: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.ink,
   },
-  totalValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.ink,
+  totalLabel: {
+    flex: 1,
   },
   totalStrong: {
     fontSize: 18,

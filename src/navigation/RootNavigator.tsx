@@ -161,7 +161,6 @@ export function RootNavigator() {
             setScreen('menu');
             loadMenu().catch(() => undefined);
           }}
-          onLogout={handleLogout}
         />
       ) : null}
       {screen === 'menu' ? (

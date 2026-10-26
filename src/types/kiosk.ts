@@ -15,7 +15,6 @@ export type Category = {
 
 export type Menu = {
   categories: Category[];
-  loadedAt: number;
 };
 
 export type CartLine = {

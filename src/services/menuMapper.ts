@@ -74,12 +74,14 @@ export function mapMenuResponse(payload: unknown): Menu {
         products,
       };
     })
-    .filter((category): category is Category => category != null)
-    .filter(category => category.products.length > 0);
+    .filter(
+      (category): category is Category =>
+        category != null && category.products.length > 0,
+    );
 
   if (categories.length === 0) {
     throw new Error('The menu is empty right now.');
   }
 
-  return { categories, loadedAt: Date.now() };
+  return { categories };
 }

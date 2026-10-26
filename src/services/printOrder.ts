@@ -1,7 +1,12 @@
+import { Platform } from 'react-native';
 import RNPrint from 'react-native-print';
 
 /** Print the bill HTML returned by place_order (`vieworder.html`). */
 export async function printOrderReceipt(receiptHtml: string) {
+  if (Platform.OS === 'ios') {
+    return;
+  }
+
   const fragment = receiptHtml.trim();
   if (!fragment) {
     throw new Error('No receipt HTML to print.');

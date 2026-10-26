@@ -69,10 +69,7 @@ export function LoginScreen({ onLogin }: Props) {
 
   return (
     <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        enabled={true}
-        behavior="padding">
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView
           style={styles.flex}
           contentContainerStyle={[

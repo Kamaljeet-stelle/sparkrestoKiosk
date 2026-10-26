@@ -31,8 +31,7 @@ import { fonts } from '../../theme/fonts';
 import type { Product } from '../../types/kiosk';
 import { formatRand } from '../../utils/money';
 
-type MenuProduct = Product & { categoryName?: string };
-type Row = MenuProduct | { id: string; pad: true };
+type Row = Product | { id: string; pad: true };
 
 type Props = {
   onContinue: () => void;
@@ -71,11 +70,11 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
 
   const products = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matches: MenuProduct[] = needle
+    const matches = needle
       ? categories.flatMap(category =>
-        category.products
-          .filter(product => product.name.toLowerCase().includes(needle))
-          .map(product => ({ ...product, categoryName: category.name })),
+        category.products.filter(product =>
+          product.name.toLowerCase().includes(needle),
+        ),
       )
       : (selected?.products ?? []);
     const remainder = matches.length % layout.columns;
@@ -90,7 +89,7 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
   }, [categories, layout.columns, query, selected]);
 
   const header = (
-    <View style={[styles.top, { paddingTop: 10 }]}>
+    <View style={styles.top}>
       <View style={styles.titleRow}>
         <View style={styles.titleCopy}>
           <AppText style={styles.title}>{KIOSK_TITLE}</AppText>
@@ -211,7 +210,7 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
         <View
           style={[
             styles.cartBar,
-            { paddingBottom: Math.max(insets.bottom) },
+            { paddingBottom: Math.max(insets.bottom - 24) },
           ]}>
           <Pressable
             accessibilityRole="button"
@@ -283,6 +282,7 @@ const styles = StyleSheet.create({
   },
   top: {
     paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 10,
     gap: 12,
   },
@@ -395,8 +395,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    // marginHorizontal: 12,
-    // marginBottom: 8,
     paddingHorizontal: 14,
     paddingTop: 12,
     borderRadius: 15,
