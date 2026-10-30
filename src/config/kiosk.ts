@@ -15,7 +15,7 @@ export const APPLY_COUPON_URL = 'https://sparkresto.in/api/selfkiosk/apply_coupo
 
 export const KIOSK_DOMAIN_ID = '803';
 
-export const KIOSK_TITLE = 'Self Kiosk';
+export const KIOSK_TITLE = 'Sparkresto';
 
 export const EMPTY_CART_URL = `${KIOSK_ORIGIN}/images/cart-empty.png`;
 

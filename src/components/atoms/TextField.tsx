@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View, type TextInputProps } from 'react-native';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 import { AppText, AppTextInput } from './AppText';
@@ -22,6 +23,8 @@ export function TextField({
   onBlur,
   ...inputProps
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [focused, setFocused] = useState(false);
 
   return (
@@ -58,7 +61,8 @@ export function TextField({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   wrap: {
     marginBottom: 16,
   },
@@ -83,7 +87,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.inputBorder,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
     justifyContent: 'center',
   },
@@ -115,3 +119,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
+}

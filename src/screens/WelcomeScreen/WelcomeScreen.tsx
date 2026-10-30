@@ -4,7 +4,8 @@ import { AppText } from '../../components/atoms/AppText';
 import { PrimaryButton } from '../../components/atoms/PrimaryButton';
 import { KIOSK_TITLE } from '../../config/kiosk';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import Images from '../../theme/Images';
 
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function WelcomeScreen({ onStart }: Props) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const layout = useResponsiveLayout();
   const hero = layout.mode === 'compact' ? 42 : 64;
@@ -52,7 +54,8 @@ export function WelcomeScreen({ onStart }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -69,7 +72,7 @@ const styles = StyleSheet.create({
     height: 84,
     borderRadius: 24,
     marginBottom: 18,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   title: {
     marginTop: 8,
@@ -106,3 +109,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}

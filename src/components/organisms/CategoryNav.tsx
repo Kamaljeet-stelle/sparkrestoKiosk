@@ -11,7 +11,8 @@ import {
 import { ChevronIcon } from '../atoms/KioskIcons';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import type { Category } from '../../types/kiosk';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import { AppText } from '../atoms/AppText';
 
@@ -34,6 +35,7 @@ function CategoryChip({
   thumb,
   image,
   fontSize,
+  showChevron,
   onSelect,
   onLayout,
 }: {
@@ -43,11 +45,13 @@ function CategoryChip({
   thumb: number;
   image: number;
   fontSize: number;
+  showChevron: boolean;
   onSelect: () => void;
   onLayout: (metrics: ItemMetrics) => void;
 }) {
+  const { colors } = useTheme();
   const scale = useRef(new Animated.Value(selected ? 1 : 0.96)).current;
-  const indicator = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const styles = useThemedStyles(createStyles);
   const labelFontSize = fontSize + 2;
   const lineHeight = labelFontSize + 3;
   const labelHeight = lineHeight * 2;
@@ -55,20 +59,13 @@ function CategoryChip({
   const itemHeight = 20 + thumb + 6 + labelHeight;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: selected ? 1 : 0.96,
-        friction: 7,
-        tension: 120,
-        useNativeDriver: true,
-      }),
-      Animated.timing(indicator, {
-        toValue: selected ? 1 : 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [indicator, scale, selected]);
+    Animated.spring(scale, {
+      toValue: selected ? 1 : 0.96,
+      friction: 7,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
+  }, [scale, selected]);
 
   return (
     <Pressable
@@ -118,34 +115,28 @@ function CategoryChip({
             { fontSize: labelFontSize, lineHeight, height: labelHeight },
             selected && styles.labelSelected,
           ]}
-          numberOfLines={2}>
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}>
           {category.name}
         </AppText>
+        {selected && showChevron ? (
+          <View style={styles.chevron}>
+            <ChevronIcon size={14} color={colors.white} />
+          </View>
+        ) : null}
       </Animated.View>
-      <Animated.View
-        style={[
-          styles.indicator,
-          {
-            opacity: indicator,
-            transform: [
-              {
-                scaleX: indicator.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.4, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
     </Pressable>
   );
 }
 
 export function CategoryNav({ categories, selectedId, onSelect }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const layout = useResponsiveLayout();
   const { category: size } = layout;
   const isRail = layout.categoryRail;
+  const showChevron = layout.mode !== 'compact';
   const thumb = Math.max(65, size.thumb);
   const image = Math.max(55, size.image);
 
@@ -198,6 +189,7 @@ export function CategoryNav({ categories, selectedId, onSelect }: Props) {
       thumb={thumb}
       image={image}
       fontSize={size.font}
+      showChevron={showChevron}
       onSelect={() => onSelect(category.id)}
       onLayout={metrics => {
         metricsRef.current[category.id] = metrics;
@@ -231,7 +223,7 @@ export function CategoryNav({ categories, selectedId, onSelect }: Props) {
     <View style={styles.horizontalShell}>
       <ScrollView
         ref={bindScroll}
-        horizontal
+        // horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.scroller}
         contentContainerStyle={styles.row}
@@ -249,7 +241,8 @@ export function CategoryNav({ categories, selectedId, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   horizontalShell: {
     position: 'relative',
     marginVertical: 10,
@@ -278,16 +271,21 @@ const styles = StyleSheet.create({
   },
   item: {
     width: '100%',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: 10,
     paddingBottom: 10,
     paddingHorizontal: 8,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
     overflow: 'hidden',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   itemSelected: {
     backgroundColor: colors.orange,
@@ -297,13 +295,13 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   thumb: {
-    backgroundColor: '#F2F4F8',
+    backgroundColor: colors.mediaMuted,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   thumbSelected: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   letter: {
     fontFamily: fonts.extraBold,
@@ -319,12 +317,10 @@ const styles = StyleSheet.create({
   labelSelected: {
     color: colors.white,
   },
-  indicator: {
-    marginTop: 6,
-    width: 30,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.orange,
+  chevron: {
+    position: 'absolute',
+    right: 4,
+    top: '38%',
   },
   more: {
     position: 'absolute',
@@ -333,15 +329,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0A183F',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
 });
+}

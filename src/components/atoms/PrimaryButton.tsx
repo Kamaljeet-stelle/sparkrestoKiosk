@@ -5,7 +5,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useThemedStyles, useTheme } from '../../theme/ThemeProvider';
 import { typography } from '../../theme/typography';
 import { AppText } from './AppText';
 
@@ -28,6 +29,8 @@ export function PrimaryButton({
   disabled = false,
   style,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const isDisabled = disabled || loading;
   const lightLabel = variant === 'outline';
 
@@ -58,7 +61,8 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   base: {
     minHeight: 52,
     minWidth: 126,
@@ -74,13 +78,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orange,
   },
   navy: {
-    backgroundColor: colors.navy,
+    backgroundColor: colors.fill,
   },
   danger: {
     backgroundColor: colors.cancel,
   },
   outline: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
@@ -99,3 +103,4 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 });
+}

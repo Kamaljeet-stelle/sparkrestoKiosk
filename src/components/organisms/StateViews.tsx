@@ -1,9 +1,12 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { PrimaryButton } from '../atoms/PrimaryButton';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { AppText } from '../atoms/AppText';
 
 export function LoadingState({ label = 'Loading the menu…' }: { label?: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.center}>
       <ActivityIndicator size="large" color={colors.orange} />
@@ -24,6 +27,7 @@ export function ErrorState({
   message: string;
   onRetry: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.center}>
       <AppText style={styles.title}>Menu unavailable</AppText>
@@ -34,6 +38,7 @@ export function ErrorState({
 }
 
 export function EmptyState({ message }: { message: string }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.empty}>
       <AppText style={styles.title}>Nothing to show</AppText>
@@ -42,7 +47,8 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',
@@ -87,6 +93,7 @@ const styles = StyleSheet.create({
     flexBasis: '40%',
     height: 180,
     borderRadius: 18,
-    backgroundColor: '#E7E8EE',
+    backgroundColor: colors.skeleton,
   },
 });
+}

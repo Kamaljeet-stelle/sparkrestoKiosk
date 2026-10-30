@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
+  Image,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
+import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, AppTextInput } from '../../components/atoms/AppText';
 import {
@@ -26,21 +29,59 @@ import {
 import { KIOSK_TITLE } from '../../config/kiosk';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { useKiosk } from '../../store/KioskProvider';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
+import Images from '../../theme/Images';
 import type { Product } from '../../types/kiosk';
 import { formatRand } from '../../utils/money';
 
 type Row = Product | { id: string; pad: true };
 
+type ProductSort = 'default' | 'az' | 'price-asc' | 'price-desc';
+
+const SORT_OPTIONS: { id: ProductSort; label: string }[] = [
+  { id: 'default', label: 'Default' },
+  { id: 'az', label: 'A to Z' },
+  { id: 'price-asc', label: 'Price: Low to High' },
+  { id: 'price-desc', label: 'Price: High to Low' },
+];
+
+function sortProducts(items: Product[], sort: ProductSort): Product[] {
+  if (sort === 'default') {
+    return items;
+  }
+  const next = [...items];
+  if (sort === 'az') {
+    next.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    return next;
+  }
+  const priceOf = (price: string) => {
+    const value = Number(price);
+    return Number.isFinite(value) ? value : 0;
+  };
+  next.sort((a, b) => {
+    const delta = priceOf(a.price) - priceOf(b.price);
+    if (delta !== 0) {
+      return sort === 'price-asc' ? delta : -delta;
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+  return next;
+}
+
 type Props = {
   onContinue: () => void;
+  onOpenCart: () => void;
   onStartOver: () => void;
   onLogout: () => void;
 };
 
-export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
+export function MenuScreen({ onContinue, onOpenCart, onStartOver, onLogout }: Props) {
+  const { colors, isDark, toggleTheme } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<Row>>(null);
   const layout = useResponsiveLayout();
   const {
     menu,
@@ -55,7 +96,10 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
   } = useKiosk();
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [cartOpen, setCartOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [sort, setSort] = useState<ProductSort>('default');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const compact = layout.mode === 'compact';
 
   const categories = useMemo(() => menu?.categories ?? [], [menu]);
   const selected =
@@ -70,13 +114,16 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
 
   const products = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matches = needle
-      ? categories.flatMap(category =>
-        category.products.filter(product =>
-          product.name.toLowerCase().includes(needle),
-        ),
-      )
-      : (selected?.products ?? []);
+    const matches = sortProducts(
+      needle
+        ? categories.flatMap(category =>
+          category.products.filter(product =>
+            product.name.toLowerCase().includes(needle),
+          ),
+        )
+        : (selected?.products ?? []),
+      sort,
+    );
     const remainder = matches.length % layout.columns;
     const pads =
       matches.length === 0 || remainder === 0
@@ -86,16 +133,34 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
           pad: true as const,
         }));
     return [...matches, ...pads];
-  }, [categories, layout.columns, query, selected]);
+  }, [categories, layout.columns, query, selected, sort]);
+
+  const titleParts = KIOSK_TITLE.trim().split(/\s+/);
+  const titleLead = titleParts[0] ?? KIOSK_TITLE;
+  const titleAccent = titleParts.slice(1).join(' ');
+  const subtitle = query.trim() ? 'Search' : selected?.name ?? 'Menu';
 
   const header = (
     <View style={styles.top}>
       <View style={styles.titleRow}>
-        <View style={styles.titleCopy}>
-          <AppText style={styles.title}>{KIOSK_TITLE}</AppText>
-          <AppText style={styles.subtitle}>
-            {query.trim() ? 'Search results' : selected?.name ?? 'Menu'}
-          </AppText>
+        <View style={styles.brand}>
+          <Image source={Images.appLogo} style={styles.logo} />
+          <View style={styles.titleCopy}>
+            <AppText style={[styles.title, compact && styles.titleCompact]}>
+              {titleLead}
+              {titleAccent ? (
+                <AppText style={[styles.titleAccent, compact && styles.titleCompact]}>
+                  {' '}
+                  {titleAccent}
+                </AppText>
+              ) : null}
+            </AppText>
+            <View style={styles.subtitleRow}>
+              <View style={styles.subtitleRule} />
+              <AppText style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</AppText>
+              <View style={styles.subtitleRule} />
+            </View>
+          </View>
         </View>
         <View style={styles.headerActions}>
           <LogoutButton onLogout={onLogout} />
@@ -105,24 +170,68 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
             hitSlop={8}
             style={styles.startOver}>
             <ResetIcon size={15} color={colors.orange} />
-            <AppText style={styles.startOverText}>Start over</AppText>
+            <AppText style={[styles.startOverText, compact && styles.startOverTextCompact]}>
+              Start over
+            </AppText>
           </Pressable>
         </View>
       </View>
-      <View style={styles.searchWrap}>
-        <SearchIcon size={18} color={colors.placeholder} style={styles.searchIcon} />
-        <AppTextInput
-          value={query}
-          onChangeText={value => {
+      <View style={styles.searchRow}>
+        <View
+          style={[
+            styles.searchWrap,
+            compact && styles.searchWrapCompact,
+            searchFocused && styles.searchFocused,
+          ]}>
+          <SearchIcon size={20} color={colors.placeholder} style={styles.searchIcon} />
+          <AppTextInput
+            value={query}
+            onChangeText={value => {
+              markActivity();
+              setQuery(value);
+            }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search menu..."
+            placeholderTextColor={colors.placeholder}
+            style={[styles.search, compact && styles.searchCompact]}
+            autoCorrect={false}
+          />
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Filter menu"
+          onPress={() => {
             markActivity();
-            setQuery(value);
+            setFilterOpen(true);
           }}
-          placeholder="Search Menu"
-          placeholderTextColor={colors.placeholder}
-          style={styles.search}
-          autoCorrect={false}
-        />
+          style={[
+            styles.filterButton,
+            compact && styles.filterButtonCompact,
+            sort !== 'default' && styles.filterButtonActive,
+          ]}>
+          <Ionicons
+            name="funnel-outline"
+            size={18}
+            color={sort !== 'default' ? colors.white : colors.orange}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isDark ? 'Use light theme' : 'Use dark theme'}
+          onPress={toggleTheme}
+          style={[styles.themeButton, compact && styles.themeButtonCompact]}>
+          <Ionicons
+            name={isDark ? 'sunny-outline' : 'moon-outline'}
+            size={16}
+            color={colors.orange}
+          />
+          <AppText style={[styles.themeText, compact && styles.themeTextCompact]}>
+            {isDark ? 'Light' : 'Dark'}
+          </AppText>
+        </Pressable>
       </View>
+
     </View>
   );
 
@@ -164,10 +273,8 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
               tintColor={colors.orange}
             />
           }
-          contentContainerStyle={[
-            styles.grid,
-            !layout.persistentCart && styles.gridWithCart,
-          ]}
+          ref={listRef}
+          contentContainerStyle={styles.grid}
           columnWrapperStyle={
             layout.columns > 1 && products.length > 0 ? styles.row : undefined
           }
@@ -197,6 +304,40 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
   return (
     <SafeAreaView style={styles.screen}>
       {header}
+      <Modal
+        visible={filterOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFilterOpen(false)}>
+        <Pressable style={styles.filterBackdrop} onPress={() => setFilterOpen(false)}>
+          <Pressable style={styles.filterCard} onPress={() => undefined}>
+            <AppText style={styles.filterTitle}>Sort</AppText>
+            {SORT_OPTIONS.map(option => {
+              const active = sort === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => {
+                    markActivity();
+                    setSort(option.id);
+                    setFilterOpen(false);
+                  }}
+                  style={[styles.filterOption, active && styles.filterOptionActive]}>
+                  <AppText
+                    style={[styles.filterOptionText, active && styles.filterOptionTextActive]}>
+                    {option.label}
+                  </AppText>
+                  {active ? (
+                    <Ionicons name="checkmark" size={18} color={colors.orange} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
       {menuError && menu ? <AppText style={styles.banner}>{menuError}</AppText> : null}
       <View style={styles.main}>
         {body}
@@ -207,67 +348,45 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
         ) : null}
       </View>
       {!layout.persistentCart && menu ? (
-        <View
-          style={[
-            styles.cartBar,
-            { paddingBottom: Math.max(insets.bottom - 24) },
-          ]}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setCartOpen(true)}
-            style={styles.cartInfo}>
-            <View style={styles.bagWrap}>
-              <BagIcon size={20} color={colors.white} />
-              {itemCount > 0 ? (
+        <View style={[styles.cartBarWrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          <View style={styles.cartBar}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenCart}
+              style={styles.cartInfo}>
+              <View style={styles.bagWrap}>
+                <BagIcon size={20} color={colors.orange} />
                 <View style={styles.badge}>
                   <AppText style={styles.badgeText}>
                     {itemCount > 99 ? '99+' : String(itemCount)}
                   </AppText>
                 </View>
-              ) : null}
-            </View>
-            <View style={styles.cartCopy}>
-              <AppText style={styles.cartBarTitle}>
-                {itemCount === 0
-                  ? 'Your cart is empty'
-                  : `View order • ${itemCount}`}
-              </AppText>
-              <AppText style={styles.cartBarTotal}>{formatRand(quote.total)}</AppText>
-            </View>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              if (itemCount === 0) {
-                setCartOpen(true);
-                return;
-              }
-              onContinue();
-            }}
-            style={styles.cartBarAction}>
-            <AppText style={styles.cartBarActionText}>
-              {itemCount === 0 ? 'Browse' : 'Continue'}
-            </AppText>
-            {itemCount > 0 ? (
-              <ChevronIcon size={14} color={colors.white} />
-            ) : null}
-          </Pressable>
-        </View>
-      ) : null}
-      {cartOpen && !layout.persistentCart ? (
-        <View style={styles.sheetWrap}>
-          <Pressable
-            style={styles.backdrop}
-            onPress={() => setCartOpen(false)}
-          />
-          <View style={[styles.sheet, { paddingBottom: insets.bottom }]}>
-            <CartPanel
-              framed={false}
-              onContinue={() => {
-                setCartOpen(false);
+              </View>
+              <View style={styles.cartCopy}>
+                <AppText style={[styles.cartBarTitle, compact && styles.cartBarTitleCompact]}>
+                  {itemCount === 0 ? 'Your cart is empty' : `View order • ${itemCount}`}
+                </AppText>
+                <AppText style={[styles.cartBarTotal, compact && styles.cartBarTotalCompact]}>
+                  {formatRand(quote.total)}
+                </AppText>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (itemCount === 0) {
+                  setQuery('');
+                  listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                  return;
+                }
                 onContinue();
               }}
-            />
+              style={styles.cartBarAction}>
+              <AppText style={[styles.cartBarActionText, compact && styles.cartBarActionTextCompact]}>
+                {itemCount === 0 ? 'Browse Menu' : 'Continue'}
+              </AppText>
+              <ChevronIcon size={14} color={colors.white} />
+            </Pressable>
           </View>
         </View>
       ) : null}
@@ -275,204 +394,339 @@ export function MenuScreen({ onContinue, onStartOver, onLogout }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
-  },
-  top: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    gap: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  titleCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 35,
-    fontFamily: fonts.semiBold,
-    color: colors.navy,
-  },
-  subtitle: {
-    marginTop: 3,
-    color: colors.navy,
-    fontFamily: fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.9,
-    fontSize: 15,
-  },
-  headerActions: {
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  startOver: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingTop: 2,
-  },
-  startOverText: {
-    color: colors.orange,
-    fontFamily: fonts.semiBold,
-    fontSize: 15,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 52,
-    borderRadius: 18,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E7E9F0',
-    paddingHorizontal: 14,
-    shadowColor: '#0A183F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 1,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  search: {
-    flex: 1,
-    color: colors.navy,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    paddingVertical: 12,
-  },
-  banner: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    color: colors.error,
-    fontFamily: fonts.semiBold,
-  },
-  main: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  workspace: {
-    flex: 1,
-    minWidth: 0,
-  },
-  workspaceRail: {
-    flexDirection: 'row',
-    paddingLeft: 12,
-  },
-  list: {
-    flex: 1,
-  },
-  grid: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 24,
-    flexGrow: 1,
-  },
-  gridWithCart: {
-    paddingBottom: 16,
-  },
-  row: {
-    gap: 12,
-  },
-  cell: {
-    flex: 1,
-    marginBottom: 12,
-  },
-  cartDock: {
-    width: 320,
-    paddingRight: 12,
-    paddingBottom: 12,
-  },
-  cartBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    borderRadius: 15,
-    backgroundColor: colors.navy,
-  },
-  cartInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bagWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: 10,
-    fontFamily: fonts.extraBold,
-  },
-  cartCopy: {
-    flex: 1,
-  },
-  cartBarTitle: {
-    color: colors.white,
-    fontFamily: fonts.semiBold,
-    fontSize: 13,
-  },
-  cartBarTotal: {
-    color: colors.white,
-    fontSize: 20,
-    fontFamily: fonts.extraBold,
-    marginTop: 2,
-  },
-  cartBarAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.orange,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  cartBarActionText: {
-    color: colors.white,
-    fontFamily: fonts.extraBold,
-    fontSize: 15,
-  },
-  sheetWrap: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.overlay,
-  },
-  sheet: {
-    height: '78%',
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    overflow: 'hidden',
-  },
-});
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.canvas,
+    },
+    top: {
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 10,
+      gap: 12,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    brand: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    logo: {
+      width: 54,
+      height: 54,
+      borderRadius: 16,
+    },
+    titleCompact: {
+      fontSize: 22,
+      lineHeight: 26,
+    },
+    titleCopy: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 34,
+      fontFamily: fonts.extraBold,
+      color: colors.navy,
+    },
+    titleAccent: {
+      fontSize: 34,
+      fontFamily: fonts.extraBold,
+      color: colors.orange,
+    },
+    subtitleRow: {
+      marginTop: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    subtitleRule: {
+      width: 18,
+      height: 1.5,
+      borderRadius: 1,
+      backgroundColor: colors.orange,
+    },
+    subtitle: {
+      color: colors.navy,
+      fontFamily: fonts.medium,
+      fontSize: 14,
+    },
+    subtitleCompact: {
+      fontSize: 12,
+    },
+    headerActions: {
+      alignItems: 'flex-end',
+      gap: 10,
+    },
+    startOver: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingTop: 2,
+    },
+    startOverText: {
+      color: colors.orange,
+      fontFamily: fonts.semiBold,
+      fontSize: 15,
+    },
+    startOverTextCompact: {
+      fontSize: 13,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    searchWrap: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 58,
+      borderRadius: 20,
+      backgroundColor: colors.elevated,
+      borderWidth: 1,
+      borderColor: colors.line,
+      paddingHorizontal: 14,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      elevation: 1,
+    },
+    searchFocused: {
+      borderColor: colors.orange,
+    },
+    searchIcon: {
+      marginRight: 10,
+    },
+    searchWrapCompact: {
+      minHeight: 46,
+      borderRadius: 16,
+    },
+    search: {
+      flex: 1,
+      color: colors.navy,
+      fontFamily: fonts.regular,
+      fontSize: 16,
+      paddingVertical: 12,
+    },
+    searchCompact: {
+      fontSize: 14,
+      paddingVertical: 8,
+    },
+    filterButton: {
+      width: 58,
+      minHeight: 58,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.orangeSoft,
+    },
+    filterButtonCompact: {
+      width: 46,
+      minHeight: 46,
+      borderRadius: 16,
+    },
+    filterButtonActive: {
+      backgroundColor: colors.orange,
+    },
+    themeButton: {
+      minHeight: 58,
+      borderRadius: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      backgroundColor: colors.orangeSoft,
+    },
+    themeButtonCompact: {
+      minHeight: 46,
+      borderRadius: 16,
+      paddingHorizontal: 10,
+    },
+    themeText: {
+      color: colors.orange,
+      fontFamily: fonts.bold,
+      fontSize: 12,
+    },
+    themeTextCompact: {
+      fontSize: 12,
+    },
+    filterBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(17, 24, 39, 0.35)',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+    },
+    filterCard: {
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      padding: 16,
+      gap: 8,
+    },
+    filterTitle: {
+      color: colors.navy,
+      fontFamily: fonts.extraBold,
+      fontSize: 18,
+      marginBottom: 4,
+    },
+    filterOption: {
+      minHeight: 48,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.elevated,
+    },
+    filterOptionActive: {
+      backgroundColor: colors.orangeSoft,
+    },
+    filterOptionText: {
+      color: colors.navy,
+      fontFamily: fonts.semiBold,
+      fontSize: 16,
+    },
+    filterOptionTextActive: {
+      color: colors.orange,
+      fontFamily: fonts.bold,
+    },
+    banner: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      color: colors.error,
+      fontFamily: fonts.semiBold,
+    },
+    main: {
+      flex: 1,
+      flexDirection: 'row',
+    },
+    workspace: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+    },
+    workspaceRail: {
+      flexDirection: 'row',
+      paddingLeft: 12,
+    },
+    list: {
+      flex: 1,
+    },
+    grid: {
+      paddingHorizontal: 16,
+      paddingTop: 20,
+      paddingBottom: 24,
+      flexGrow: 1,
+    },
+    row: {
+      gap: 12,
+    },
+    cell: {
+      flex: 1,
+      marginBottom: 12,
+    },
+    cartDock: {
+      width: 320,
+      paddingRight: 12,
+      paddingBottom: 12,
+    },
+    cartBarWrap: {
+      paddingHorizontal: 12,
+      paddingTop: 8,
+    },
+    cartBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.line,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    cartInfo: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    bagWrap: {
+      width: 46,
+      height: 46,
+      borderRadius: 16,
+      backgroundColor: colors.orangeSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badge: {
+      position: 'absolute',
+      top: -5,
+      right: -5,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: colors.orange,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    badgeText: {
+      color: colors.white,
+      fontSize: 10,
+      fontFamily: fonts.extraBold,
+    },
+    cartCopy: {
+      flex: 1,
+    },
+    cartBarTitle: {
+      color: colors.textMuted,
+      fontFamily: fonts.medium,
+      fontSize: 12,
+    },
+    cartBarTitleCompact: {
+      fontSize: 11,
+    },
+    cartBarTotal: {
+      color: colors.navy,
+      fontSize: 20,
+      fontFamily: fonts.extraBold,
+      marginTop: 1,
+    },
+    cartBarTotalCompact: {
+      fontSize: 16,
+    },
+    cartBarAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.orange,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    cartBarActionText: {
+      color: colors.white,
+      fontFamily: fonts.extraBold,
+      fontSize: 15,
+    },
+    cartBarActionTextCompact: {
+      fontSize: 13,
+    },
+  });
+}

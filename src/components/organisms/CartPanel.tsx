@@ -14,19 +14,22 @@ import { PrimaryButton } from '../atoms/PrimaryButton';
 import { QuantityStepper } from '../molecules/QuantityStepper';
 import { EMPTY_CART_URL } from '../../config/kiosk';
 import { useKiosk } from '../../store/KioskProvider';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { lineTotalRand } from '../../services/cart';
 import type { CartLine } from '../../types/kiosk';
-import { formatRand } from '../../utils/money';
+import { formatMenuPrice, formatRand } from '../../utils/money';
 import { formatProductName } from '../../utils/text';
 import { AppText, AppTextInput } from '../atoms/AppText';
+import { fonts } from '../../theme/fonts';
 
 type Props = {
   onContinue: () => void;
   framed?: boolean;
+  showTitle?: boolean;
 };
 
-export function CartPanel({ onContinue, framed = true }: Props) {
+export function CartPanel({ onContinue, framed = true, showTitle = true }: Props) {
   const {
     lines,
     setQuantity,
@@ -40,6 +43,8 @@ export function CartPanel({ onContinue, framed = true }: Props) {
     applyCoupon,
     clearCoupon,
   } = useKiosk();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const panelRef = useRef<ViewInstance>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   const couponRef = useRef<ViewInstance>(null);
@@ -117,17 +122,25 @@ export function CartPanel({ onContinue, framed = true }: Props) {
         ? formatRand(coupon.offer)
         : '';
 
+  const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+
   const renderLine = (item: CartLine) => (
     <View key={item.productId} style={styles.line}>
-      <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+      {item.imageUrl ? (
+        <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+      ) : (
+        <View style={styles.thumb} />
+      )}
       <View style={styles.lineBody}>
-        <AppText style={styles.lineName} numberOfLines={2}>
-          {formatProductName(item.name)}
-        </AppText>
-        <AppText style={styles.lineMeta}>
-          × {item.unitPrice} ·{' '}
-          {formatRand(lineTotalRand(item.unitPrice, item.quantity))}
-        </AppText>
+        <View style={styles.lineTop}>
+          <AppText style={styles.lineName} numberOfLines={2}>
+            {formatProductName(item.name)}
+          </AppText>
+          <AppText style={styles.linePrice}>
+            {formatRand(lineTotalRand(item.unitPrice, item.quantity))}
+          </AppText>
+        </View>
+        <AppText style={styles.lineMeta}>{formatMenuPrice(item.unitPrice)} each</AppText>
         <View style={styles.lineActions}>
           <QuantityStepper
             quantity={item.quantity}
@@ -168,7 +181,7 @@ export function CartPanel({ onContinue, framed = true }: Props) {
             revealCoupon();
           }
         }}>
-        <AppText style={styles.title}>Your Order</AppText>
+        {showTitle ? <AppText style={styles.title}>Your Order</AppText> : null}
         {lines.length === 0 ? (
           <View style={styles.empty}>
             <Image
@@ -177,9 +190,15 @@ export function CartPanel({ onContinue, framed = true }: Props) {
               resizeMode="contain"
             />
             <AppText style={styles.emptyTitle}>Your cart is empty.</AppText>
+            <AppText style={styles.emptyBody}>
+              Add something from the menu to start this order.
+            </AppText>
           </View>
         ) : (
           <View style={styles.listContent}>
+            <AppText style={styles.count}>
+              {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            </AppText>
             {lines.map(renderLine)}
           </View>
         )}
@@ -225,14 +244,17 @@ export function CartPanel({ onContinue, framed = true }: Props) {
             <AppText style={styles.applied}>Coupon applied successfully.</AppText>
           ) : null}
 
-          <TotalRow label="Sub Total" value={formatRand(quote.subtotal)} />
-          {coupon ? (
-            <TotalRow
-              label={`Discount ${discountLabel}`}
-              value={formatRand(quote.discount)}
-            />
-          ) : null}
-          <TotalRow label="Total" value={formatRand(quote.total)} strong />
+          <View style={styles.summary}>
+            <TotalRow label="Sub Total" value={formatRand(quote.subtotal)} />
+            {coupon ? (
+              <TotalRow
+                label={`Discount ${discountLabel}`}
+                value={`− ${formatRand(quote.discount)}`}
+              />
+            ) : null}
+            <View style={styles.totalDivider} />
+            <TotalRow label="Total" value={formatRand(quote.total)} strong />
+          </View>
           <AppText style={styles.note}>
             Additional taxes or changes apply at checkout
           </AppText>
@@ -258,23 +280,25 @@ function TotalRow({
   value: string;
   strong?: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.totalRow}>
       <AppText
         style={[styles.totalText, styles.totalLabel, strong && styles.totalStrong]}>
         {label}
       </AppText>
-      <AppText style={[styles.totalText, strong && styles.totalStrong]}>
+      <AppText style={[styles.totalText, strong && styles.totalValue]}>
         {value}
       </AppText>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   panel: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.canvas,
   },
   framed: {
     borderRadius: 22,
@@ -287,20 +311,23 @@ const styles = StyleSheet.create({
   },
   scrollerContent: {
     flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 12,
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
-    color: colors.ink,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    fontFamily: fonts.extraBold,
+    color: colors.navy,
   },
   empty: {
-    minHeight: 180,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 24,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
   },
   emptyArt: {
     width: 180,
@@ -308,39 +335,70 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     marginTop: 8,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: fonts.extraBold,
+    color: colors.navy,
+  },
+  emptyBody: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: fonts.regular,
     color: colors.textMuted,
+    textAlign: 'center',
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    gap: 10,
+    gap: 12,
+  },
+  count: {
+    color: colors.textMuted,
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
   },
   line: {
     flexDirection: 'row',
-    gap: 10,
-    padding: 8,
-    borderRadius: 14,
-    backgroundColor: colors.background,
+    gap: 12,
+    padding: 12,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
   thumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: colors.white,
+    width: 76,
+    height: 76,
+    borderRadius: 16,
+    backgroundColor: colors.media,
   },
   lineBody: {
     flex: 1,
-    gap: 4,
+    gap: 6,
+  },
+  lineTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   lineName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.ink,
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 21,
+    fontFamily: fonts.extraBold,
+    color: colors.navy,
+  },
+  linePrice: {
+    fontSize: 16,
+    fontFamily: fonts.extraBold,
+    color: colors.orange,
   },
   lineMeta: {
-    fontSize: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
     color: colors.textMuted,
   },
   lineActions: {
@@ -351,14 +409,15 @@ const styles = StyleSheet.create({
   remove: {
     color: colors.cancel,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   footer: {
-    marginTop: 'auto',
-    padding: 12,
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
+    padding: 14,
+    gap: 12,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   couponRow: {
     flexDirection: 'row',
@@ -366,21 +425,21 @@ const styles = StyleSheet.create({
   },
   couponInput: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     color: colors.navy,
-    backgroundColor: colors.white,
+    backgroundColor: colors.canvas,
   },
   couponError: {
     borderColor: colors.error,
   },
   apply: {
-    minWidth: 84,
-    borderRadius: 12,
-    backgroundColor: colors.navy,
+    minWidth: 88,
+    borderRadius: 14,
+    backgroundColor: colors.orange,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
@@ -402,22 +461,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  summary: {
+    gap: 8,
+    paddingTop: 4,
+  },
+  totalDivider: {
+    height: 1,
+    backgroundColor: colors.line,
+    marginVertical: 4,
+  },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
   },
   totalText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.ink,
+    fontSize: 15,
+    fontFamily: fonts.semiBold,
+    color: colors.navy,
   },
   totalLabel: {
     flex: 1,
   },
   totalStrong: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: fonts.extraBold,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontFamily: fonts.extraBold,
+    color: colors.orange,
   },
   note: {
     fontSize: 12,
@@ -429,3 +502,4 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
 });
+}

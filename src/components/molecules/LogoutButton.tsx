@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { logout } from '../../services/kioskApi';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import { AppText } from '../atoms/AppText';
 
@@ -19,6 +20,8 @@ type Props = {
 };
 
 export function LogoutButton({ onLogout, style }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -52,9 +55,9 @@ export function LogoutButton({ onLogout, style }: Props) {
       ]}>
       <View style={styles.iconWrap}>
         {loggingOut ? (
-          <ActivityIndicator color={colors.white} size="small" />
+          <ActivityIndicator color={colors.orange} size="small" />
         ) : (
-          <Ionicons name="log-out-outline" size={16} color={colors.white} />
+          <Ionicons name="log-out-outline" size={18} color={colors.orange} />
         )}
       </View>
       <AppText style={styles.label}>Log out</AppText>
@@ -62,7 +65,8 @@ export function LogoutButton({ onLogout, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -71,21 +75,17 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingLeft: 6,
     paddingRight: 14,
-    borderRadius: 13,
-    backgroundColor: colors.white,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    // shadowColor: colors.navy,
-    // shadowOffset: { width: 0, height: 6 },
-    // shadowOpacity: 0.12,
-    // shadowRadius: 12,
-    // elevation: 4,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   iconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.cancel,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -96,3 +96,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
+}

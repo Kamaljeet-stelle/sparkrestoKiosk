@@ -3,6 +3,7 @@ import { Alert, BackHandler, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../components/atoms/AppText';
 import { IDLE_TIMEOUT_MS, IDLE_WARNING_MS } from '../config/kiosk';
+import { CartScreen } from '../screens/CartScreen/CartScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen/CheckoutScreen';
 import { ConfirmationScreen } from '../screens/ConfirmationScreen/ConfirmationScreen';
 import { LoginScreen } from '../screens/LoginScreen/LoginScreen';
@@ -10,12 +11,14 @@ import { MenuScreen } from '../screens/MenuScreen/MenuScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen/WelcomeScreen';
 import { hydrateSession, isLoggedIn } from '../services/session';
 import { useKiosk } from '../store/KioskProvider';
-import { colors } from '../theme/colors';
+import { type Palette } from '../theme/colors';
+import { useThemedStyles } from '../theme/ThemeProvider';
 import type { OrderResult } from '../types/kiosk';
 
-type ScreenName = 'login' | 'welcome' | 'menu' | 'checkout' | 'confirmation';
+type ScreenName = 'login' | 'welcome' | 'menu' | 'cart' | 'checkout' | 'confirmation';
 
 export function RootNavigator() {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const {
     lines,
@@ -115,6 +118,10 @@ export function RootNavigator() {
           setScreen('login');
           return true;
         }
+        if (screen === 'cart') {
+          setScreen('menu');
+          return true;
+        }
         if (screen === 'checkout') {
           setScreen('menu');
           return true;
@@ -134,7 +141,7 @@ export function RootNavigator() {
 
   const remaining = IDLE_TIMEOUT_MS - (now - lastActivity);
   const showWarning =
-    screen === 'menu' &&
+    (screen === 'menu' || screen === 'cart') &&
     lines.length > 0 &&
     remaining > 0 &&
     remaining <= IDLE_WARNING_MS;
@@ -170,8 +177,20 @@ export function RootNavigator() {
               setScreen('checkout');
             }
           }}
+          onOpenCart={() => setScreen('cart')}
           onStartOver={leaveOrder}
           onLogout={handleLogout}
+        />
+      ) : null}
+      {screen === 'cart' ? (
+        <CartScreen
+          onBack={() => setScreen('menu')}
+          onContinue={() => {
+            if (lines.length > 0) {
+              setScreen('checkout');
+            }
+          }}
+          onStartOver={leaveOrder}
         />
       ) : null}
       {screen === 'checkout' ? (
@@ -205,7 +224,8 @@ export function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background,
@@ -214,7 +234,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.fill,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -225,3 +245,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+}

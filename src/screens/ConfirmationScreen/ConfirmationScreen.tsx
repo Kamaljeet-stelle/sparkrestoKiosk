@@ -3,7 +3,8 @@ import LottieView from 'lottie-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { AppText } from '../../components/atoms/AppText';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useTheme, useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import type { OrderResult } from '../../types/kiosk';
 
@@ -16,6 +17,8 @@ type Props = {
 };
 
 export function ConfirmationScreen({ result, onNewOrder }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const ok = result.success;
 
@@ -43,7 +46,7 @@ export function ConfirmationScreen({ result, onNewOrder }: Props) {
 
         {ok ? (
           <View style={styles.card}>
-            <Ionicons name="receipt-outline" size={28} color="#22C55E" />
+            <Ionicons name="receipt-outline" size={28} color={colors.success} />
             <View style={styles.labelRow}>
               <View style={[styles.rule, styles.ruleGreen]} />
               <AppText style={styles.label}>ORDER NUMBER</AppText>
@@ -64,7 +67,7 @@ export function ConfirmationScreen({ result, onNewOrder }: Props) {
             <AppText style={styles.total}>{result.totalLabel}</AppText>
 
             <View style={styles.banner}>
-              <Ionicons name="bicycle-outline" size={22} color="#15803D" />
+              <Ionicons name="bicycle-outline" size={22} color={colors.successBannerText} />
               <AppText style={styles.bannerText}>{result.message}</AppText>
             </View>
           </View>
@@ -82,10 +85,11 @@ export function ConfirmationScreen({ result, onNewOrder }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F7F8FC',
+    backgroundColor: colors.canvas,
     paddingHorizontal: 20,
   },
   content: {
@@ -116,13 +120,13 @@ const styles = StyleSheet.create({
     marginTop: 28,
     width: '100%',
     maxWidth: 420,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     paddingHorizontal: 22,
     paddingTop: 22,
     paddingBottom: 18,
     alignItems: 'center',
-    shadowColor: '#0A183F',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -140,10 +144,10 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   ruleGreen: {
-    backgroundColor: '#86EFAC',
+    backgroundColor: colors.ruleGreen,
   },
   ruleOrange: {
-    backgroundColor: '#FDBA74',
+    backgroundColor: colors.ruleOrange,
   },
   label: {
     fontSize: 12,
@@ -163,7 +167,7 @@ const styles = StyleSheet.create({
     marginVertical: 18,
     borderStyle: 'dashed',
     borderBottomWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: colors.hairline,
   },
   total: {
     marginTop: 6,
@@ -178,7 +182,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#ECFDF3',
+    backgroundColor: colors.successBanner,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -188,7 +192,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: fonts.medium,
-    color: '#166534',
+    color: colors.successBannerText,
   },
   cta: {
     minHeight: 58,
@@ -209,3 +213,4 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
+}

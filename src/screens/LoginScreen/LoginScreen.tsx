@@ -15,7 +15,8 @@ import { TextField } from '../../components/atoms/TextField';
 import { KIOSK_TITLE } from '../../config/kiosk';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { login } from '../../services/kioskApi';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useThemedStyles } from '../../theme/ThemeProvider';
 import { fonts } from '../../theme/fonts';
 import Images from '../../theme/Images';
 import { showError } from '../../utils/toast';
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export function LoginScreen({ onLogin }: Props) {
+  const styles = useThemedStyles(createStyles);
   const layout = useResponsiveLayout();
   const large = layout.isWide;
   const [email, setEmail] = useState('');
@@ -151,75 +153,77 @@ export function LoginScreen({ onLogin }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screen: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  screenKeyboard: {
-    justifyContent: 'flex-start',
-    paddingTop: 12,
-    paddingBottom: 32,
-  },
-  copy: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  mark: {
-    marginBottom: 18,
-    backgroundColor: colors.white,
-  },
-  title: {
-    marginTop: 8,
-    color: colors.navy,
-    fontFamily: fonts.semiBold,
-    textAlign: 'center',
-  },
-  lead: {
-    marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  leadLarge: {
-    marginTop: 16,
-    fontSize: 19,
-    lineHeight: 28,
-    maxWidth: 480,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 20,
-  },
-  cardLarge: {
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 26,
-  },
-  loginBtn: {
-    minHeight: 56,
-    borderRadius: 16,
-    marginTop: 4,
-  },
-  loginBtnLarge: {
-    minHeight: 68,
-    borderRadius: 18,
-    marginTop: 8,
-  },
-});
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
+    flex: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    screen: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 24,
+    },
+    screenKeyboard: {
+      justifyContent: 'flex-start',
+      paddingTop: 12,
+      paddingBottom: 32,
+    },
+    copy: {
+      width: '100%',
+      alignItems: 'center',
+      marginBottom: 28,
+    },
+    mark: {
+      marginBottom: 18,
+      backgroundColor: colors.surface,
+    },
+    title: {
+      marginTop: 8,
+      color: colors.navy,
+      fontFamily: fonts.semiBold,
+      textAlign: 'center',
+    },
+    lead: {
+      marginTop: 12,
+      fontSize: 16,
+      lineHeight: 24,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
+    leadLarge: {
+      marginTop: 16,
+      fontSize: 19,
+      lineHeight: 28,
+      maxWidth: 480,
+    },
+    card: {
+      width: '100%',
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.line,
+      paddingHorizontal: 20,
+      paddingTop: 22,
+      paddingBottom: 20,
+    },
+    cardLarge: {
+      borderRadius: 24,
+      paddingHorizontal: 28,
+      paddingTop: 28,
+      paddingBottom: 26,
+    },
+    loginBtn: {
+      minHeight: 56,
+      borderRadius: 16,
+      marginTop: 4,
+    },
+    loginBtnLarge: {
+      minHeight: 68,
+      borderRadius: 18,
+      marginTop: 8,
+    },
+  });
+}

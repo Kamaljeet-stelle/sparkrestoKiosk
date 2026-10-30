@@ -8,6 +8,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { fonts, fontForWeight } from '../../theme/fonts';
+import { useTheme } from '../../theme/ThemeProvider';
 
 const POPPINS_FACES = new Set<string>(Object.values(fonts));
 
@@ -33,22 +34,25 @@ function resolveTextStyle(style: StyleProp<TextStyle> | undefined): TextStyle {
 }
 
 export function AppText({ style, ...props }: TextProps) {
+  const { colors } = useTheme();
   return (
     <Text
       {...props}
       allowFontScaling={props.allowFontScaling ?? false}
-      style={resolveTextStyle(style)}
+      style={resolveTextStyle([{ color: colors.text }, style])}
     />
   );
 }
 
 export function AppTextInput({ style, ...props }: TextInputProps) {
+  const { colors, isDark } = useTheme();
   return (
     <TextInput
       {...props}
       allowFontScaling={props.allowFontScaling ?? false}
-      placeholderTextColor={props.placeholderTextColor}
-      style={resolveTextStyle(style)}
+      keyboardAppearance={props.keyboardAppearance ?? (isDark ? 'dark' : 'light')}
+      placeholderTextColor={props.placeholderTextColor ?? colors.placeholder}
+      style={resolveTextStyle([{ color: colors.text }, style])}
     />
   );
 }

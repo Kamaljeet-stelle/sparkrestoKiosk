@@ -9,21 +9,25 @@ export function useResponsiveLayout() {
     width >= 1100 ? 'desktop' : width >= 700 ? 'tablet' : 'compact';
 
   const persistentCart = width >= 960;
-  const categoryRail = width >= 960;
-  const reserved = (categoryRail ? 136 : 0) + (persistentCart ? 332 : 0);
-  const available = Math.max(0, width - reserved);
-  const columns =
-    available >= 980 ? 4 : available >= 640 ? 3 : available >= 360 ? 2 : 1;
+  const categoryRail = true;
+  const menuWidth = Math.max(0, width - (persistentCart ? 332 : 0));
+  const rail = Math.round(Math.min(200, Math.max(108, menuWidth * 0.26)));
+  const content = Math.max(0, menuWidth - rail);
+  const columns = content >= 1080 ? 4 : content >= 720 ? 3 : 2;
+  const columnWidth = content / columns;
 
-  const category =
-    mode === 'desktop'
-      ? { card: 118, thumb: 64, image: 56, rail: 140, font: 13 }
-      : mode === 'tablet'
-        ? { card: 100, thumb: 52, image: 46, rail: 124, font: 12 }
-        : { card: 78, thumb: 40, image: 34, rail: 96, font: 11 };
+  const category = {
+    card: rail - 20,
+    thumb: Math.round(rail * 0.46),
+    image: Math.round(rail * 0.38),
+    rail,
+    font: mode === 'compact' ? 10 : rail > 150 ? 13 : 12,
+  };
 
   const productImageHeight =
-    mode === 'desktop' ? 156 : mode === 'tablet' ? 124 : Math.max(72, Math.round(width * 0.2));
+    mode === 'compact'
+      ? Math.round(Math.min(120, Math.max(88, columnWidth * 0.58)))
+      : Math.round(Math.min(210, Math.max(132, columnWidth * 0.82)));
 
   const contentPadding = mode === 'compact' ? 16 : mode === 'tablet' ? 20 : 24;
   const isWide = mode !== 'compact';

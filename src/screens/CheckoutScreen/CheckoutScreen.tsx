@@ -14,7 +14,8 @@ import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { lineTotalRand } from '../../services/cart';
 import { digitsOnly } from '../../services/customer';
 import { useKiosk } from '../../store/KioskProvider';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useThemedStyles } from '../../theme/ThemeProvider';
 import type { OrderResult } from '../../types/kiosk';
 import { formatRand } from '../../utils/money';
 import { formatProductName } from '../../utils/text';
@@ -29,6 +30,7 @@ type Props = {
 const width = Dimensions.get('window').width;
 
 export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const layout = useResponsiveLayout();
   const {
@@ -176,7 +178,8 @@ export function CheckoutScreen({ onBack, onPlaced, onStartOver }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -220,7 +223,7 @@ const styles = StyleSheet.create({
     minWidth: 320,
   },
   form: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
@@ -234,14 +237,14 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   suggestion: {
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 12,
   },
   suggestionText: {
@@ -249,7 +252,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   summary: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
@@ -302,3 +305,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}

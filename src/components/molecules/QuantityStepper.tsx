@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MAX_ITEM_QUANTITY } from '../../config/kiosk';
-import { colors } from '../../theme/colors';
+import { type Palette } from '../../theme/colors';
+import { useThemedStyles } from '../../theme/ThemeProvider';
 import { AppText } from '../atoms/AppText';
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function QuantityStepper({ quantity, onChange }: Props) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       <Pressable
@@ -16,7 +18,7 @@ export function QuantityStepper({ quantity, onChange }: Props) {
         accessibilityLabel={quantity <= 1 ? 'Remove item' : 'Decrease quantity'}
         onPress={() => onChange(quantity - 1)}
         style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-        <AppText style={styles.symbol}>{quantity <= 1 ? '×' : '−'}</AppText>
+        <AppText style={styles.symbol}>{quantity <= 0 ? '×' : '−'}</AppText>
       </Pressable>
       <AppText style={styles.qty} accessibilityLabel={`Quantity ${quantity}`}>
         {quantity}
@@ -37,36 +39,40 @@ export function QuantityStepper({ quantity, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  button: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  symbol: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.navy,
-  },
-  qty: {
-    minWidth: 24,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.navy,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
-  disabled: {
-    opacity: 0.35,
-  },
-});
+function createStyles(colors: Palette) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.canvas,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.line,
+      overflow: 'hidden',
+    },
+    button: {
+      width: 34,
+      height: 34,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    symbol: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.orange,
+    },
+    qty: {
+      minWidth: 22,
+      textAlign: 'center',
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.navy,
+    },
+    pressed: {
+      opacity: 0.6,
+    },
+    disabled: {
+      opacity: 0.35,
+    },
+  });
+}
